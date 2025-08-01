@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>LIFE RPG V4: Avatar Awakening</title>
+  <title>LIFE RPG V5: FULL POWER</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
     body {
@@ -82,6 +82,27 @@
       border-radius: 5px;
       cursor: pointer;
     }
+    .skill-tree {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 20px;
+    }
+    .node {
+      background: #2a2a2a;
+      border: 2px solid #33ff33;
+      padding: 10px 15px;
+      border-radius: 12px;
+      text-align: center;
+    }
+    .controls {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .controls input {
+      width: 60px;
+    }
     .gear {
       text-align: center;
       font-size: 14px;
@@ -90,7 +111,7 @@
   </style>
 </head>
 <body>
-  <h1 contenteditable="true">LIFE RPG V4: Avatar Awakening</h1>
+  <h1 contenteditable="true">LIFE RPG V5: FULL POWER</h1>
 
   <div class="section">
     <h2>🎭 Choose Your Avatar</h2>
@@ -101,6 +122,17 @@
     </div>
     <img id="mainAvatar" src="https://i.imgur.com/Zb0g2Rm.png" class="avatar">
     <div class="gear" id="gearUnlock">🔒 Gear unlocks at level 5</div>
+  </div>
+
+  <div class="section">
+    <h2>📊 Level System</h2>
+    <div class="progress-bar"><div class="progress" id="mainXPBar"></div></div>
+    <p style="text-align:center;">XP: <span id="mainXP">0</span> / <span id="xpNext">100</span> | Level: <span id="mainLevel">1</span></p>
+  </div>
+
+  <div class="section">
+    <h2>🌲 Skill Tree</h2>
+    <div class="skill-tree" id="skillTree"></div>
   </div>
 
   <div class="section">
@@ -121,8 +153,16 @@
 
   <script>
     let avatar = "https://i.imgur.com/Zb0g2Rm.png";
+    let totalXP = 0;
     let level = 1;
     let quests = [];
+    let skillTree = {
+      'Sport': { xp: 0, max: 500, subclasses: ['Strength', 'Flexibility'] },
+      'Money': { xp: 0, max: 500, subclasses: ['Sales', 'Branding'] },
+      'Spirit': { xp: 0, max: 500, subclasses: ['Meditation', 'Journaling'] },
+      'Socials': { xp: 0, max: 500, subclasses: ['Networking', 'Dating'] },
+      'Skills': { xp: 0, max: 500, subclasses: ['Rigging', 'Forklift'] }
+    };
 
     function setAvatar(src) {
       avatar = src;
@@ -130,19 +170,53 @@
       saveAll();
     }
 
-    function addQuest() {
-      const input = document.getElementById('newQuest');
-      if (input.value.trim()) {
-        quests.push({ text: input.value.trim(), done: false });
-        input.value = '';
-        renderQuests();
-        saveAll();
+    function calculateLevel(xp) {
+      let lvl = 1;
+      let cap = 100;
+      while (xp >= cap) {
+        xp -= cap;
+        cap += 100;
+        lvl++;
       }
+      return { level: lvl, nextCap: cap };
     }
 
-    function toggleQuest(i) {
-      quests[i].done = !quests[i].done;
-      renderQuests();
+    function updateMainXP() {
+      totalXP = Object.values(skillTree).reduce((sum, cat) => sum + cat.xp, 0);
+      const { level: newLevel, nextCap } = calculateLevel(totalXP);
+      level = newLevel;
+      document.getElementById('mainLevel').textContent = level;
+      document.getElementById('mainXP').textContent = totalXP;
+      document.getElementById('xpNext').textContent = nextCap;
+      document.getElementById('mainXPBar').style.width = (totalXP / nextCap * 100) + '%';
+      document.getElementById('gearUnlock').innerText = level >= 5 ? '🧢 Gear Unlocked: Snapback Cap' : '🔒 Gear unlocks at level 5';
+    }
+
+    function updateSkillTree() {
+      const container = document.getElementById('skillTree');
+      container.innerHTML = '';
+      Object.entries(skillTree).forEach(([name, data]) => {
+        const node = document.createElement('div');
+        node.className = 'node';
+        node.innerHTML = \`
+          <strong contenteditable="true">\${name}</strong><br><small>\${data.subclasses.join(', ')}</small>
+          <div class="progress-bar"><div class="progress" style="width:\${(data.xp / data.max) * 100}%"></div></div>
+          <p>\${data.xp} / \${data.max} XP</p>
+          <div class="controls">
+            <input type="number" value="10" id="input-\${name}" />
+            <button onclick="addXP('\${name}')">+ / - XP</button>
+          </div>\`;
+        container.appendChild(node);
+      });
+    }
+
+    function addXP(category) {
+      const amount = parseInt(document.getElementById('input-' + category).value) || 0;
+      skillTree[category].xp += amount;
+      if (skillTree[category].xp < 0) skillTree[category].xp = 0;
+      if (skillTree[category].xp > skillTree[category].max) skillTree[category].xp = skillTree[category].max;
+      updateSkillTree();
+      updateMainXP();
       saveAll();
     }
 
@@ -159,23 +233,25 @@
       });
     }
 
-    function saveAll() {
-      const save = { avatar, level, quests };
-      localStorage.setItem('life_rpg_v4', JSON.stringify(save));
+    function toggleQuest(i) {
+      quests[i].done = !quests[i].done;
+      renderQuests();
+      saveAll();
     }
 
-    function loadAll() {
-      const data = JSON.parse(localStorage.getItem('life_rpg_v4'));
-      if (data) {
-        avatar = data.avatar || avatar;
-        quests = data.quests || [];
-        document.getElementById('mainAvatar').src = avatar;
+    function addQuest() {
+      const input = document.getElementById('newQuest');
+      if (input.value.trim()) {
+        quests.push({ text: input.value.trim(), done: false });
+        input.value = '';
         renderQuests();
+        saveAll();
       }
     }
 
     function exportData() {
-      const blob = new Blob([JSON.stringify({ avatar, quests }, null, 2)], { type: 'application/json' });
+      const data = { avatar, quests, skillTree };
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
       a.download = 'life_rpg_save.json';
@@ -188,21 +264,42 @@
         const data = JSON.parse(reader.result);
         avatar = data.avatar || avatar;
         quests = data.quests || [];
+        skillTree = data.skillTree || skillTree;
         document.getElementById('mainAvatar').src = avatar;
         renderQuests();
+        updateSkillTree();
+        updateMainXP();
         saveAll();
       };
       reader.readAsText(event.target.files[0]);
     }
 
     function resetGame() {
-      if (confirm("Are you sure you want to reset your game?")) {
-        localStorage.removeItem('life_rpg_v4');
+      if (confirm("Are you sure you want to reset everything?")) {
+        localStorage.removeItem('life_rpg_v5');
         location.reload();
       }
     }
 
+    function saveAll() {
+      const save = { avatar, quests, skillTree };
+      localStorage.setItem('life_rpg_v5', JSON.stringify(save));
+    }
+
+    function loadAll() {
+      const data = JSON.parse(localStorage.getItem('life_rpg_v5'));
+      if (data) {
+        avatar = data.avatar || avatar;
+        quests = data.quests || [];
+        skillTree = data.skillTree || skillTree;
+        document.getElementById('mainAvatar').src = avatar;
+      }
+    }
+
     loadAll();
+    renderQuests();
+    updateSkillTree();
+    updateMainXP();
   </script>
 </body>
 </html>
