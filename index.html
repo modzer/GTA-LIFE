@@ -2,11 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Life RPG - FIFO Arc</title>
+  <title>Life RPG V3 - FIFO ARC</title>
   <style>
     body {
       font-family: 'Arial Black', sans-serif;
-      background: #111;
+      background: #0f0f0f;
       color: #fff;
       margin: 0;
       padding: 20px;
@@ -14,68 +14,166 @@
     h1, h2 {
       text-align: center;
     }
-    .quest-log {
+    .section {
       margin: 30px auto;
-      max-width: 800px;
+      max-width: 1000px;
       padding: 20px;
-      background: #222;
+      background: #1b1b1b;
       border-radius: 20px;
+      box-shadow: 0 0 10px limegreen;
     }
     .skill-tree {
-      display: flex;
-      justify-content: space-around;
-      flex-wrap: wrap;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
       gap: 20px;
-      max-width: 900px;
-      margin: auto;
     }
-    .skill-node {
-      background: #333;
-      padding: 15px 20px;
-      border-radius: 10px;
+    .node {
+      background: #292929;
       border: 2px solid limegreen;
-      width: 180px;
+      padding: 10px 15px;
+      border-radius: 12px;
       text-align: center;
+    }
+    .progress-bar {
+      background: #444;
+      border-radius: 10px;
+      height: 18px;
+      margin-top: 6px;
+      overflow: hidden;
+    }
+    .progress {
+      height: 100%;
+      background: limegreen;
+      width: 0%;
+      transition: width 0.3s;
+    }
+    .controls {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    button, input[type="number"] {
+      padding: 6px 10px;
+      border-radius: 6px;
+      border: none;
+      background: limegreen;
+      color: black;
+      font-weight: bold;
+    }
+    input[type="number"] {
+      width: 60px;
+      text-align: center;
+    }
+    .avatar {
+      display: block;
+      margin: 0 auto 10px;
+      border-radius: 100%;
+      width: 120px;
+      border: 3px solid limegreen;
     }
   </style>
 </head>
 <body>
   <h1>💼 FIFO ARC: Life RPG</h1>
+  <img src="https://i.imgur.com/4Z0gWbJ.png" alt="CJ Avatar" class="avatar">
 
-  <div class="quest-log">
+  <div class="section">
     <h2>Main Quest</h2>
-    <p>💰 Get all the money and experience from Australia FIFO jobs.<br>
-       🧠 Learn new skills.<br>
-       🥷 Grind through every roster until you master the game.</p>
+    <p>💰 Earn all the money and experience from FIFO jobs in Australia.<br>
+       🧠 Learn valuable skills and level up your real-life character.<br>
+       🥷 Stay disciplined and master the grind.</p>
   </div>
 
-  <div class="quest-log">
-    <h2>Side Quests</h2>
-    <ul>
-      <li>✔️ Wake up at 4:30 AM for a week</li>
-      <li>✔️ Reach 100kg bodyweight goal</li>
-      <li>✔️ Learn rigging + pass theory</li>
-      <li>✔️ Record 7 reels in one week</li>
-    </ul>
+  <div class="section">
+    <h2>Level: <span id="mainLevel">1</span></h2>
+    <div class="progress-bar"><div class="progress" id="mainXPBar"></div></div>
+    <p>XP: <span id="mainXP">0</span> / <span id="xpNext">100</span></p>
   </div>
 
-  <div class="skill-tree">
-    <div class="skill-node">
-      💪 Strength<br>
-      <small>Push/Pull/Leg split</small>
-    </div>
-    <div class="skill-node">
-      🧘 Mindfulness<br>
-      <small>Meditation & Journaling</small>
-    </div>
-    <div class="skill-node">
-      💰 Hustle<br>
-      <small>Sales, Branding, Networking</small>
-    </div>
-    <div class="skill-node">
-      🔧 Skills<br>
-      <small>Rigging, Forklift, Confined Space</small>
-    </div>
+  <div class="section">
+    <h2>Skill Tree</h2>
+    <div class="skill-tree" id="skillTree"></div>
   </div>
+
+  <script>
+    const skillTree = {
+      'Sport': { xp: 0, max: 500, subclasses: ['Strength', 'Flexibility'] },
+      'Money': { xp: 0, max: 500, subclasses: ['Sales', 'Branding'] },
+      'Spirit': { xp: 0, max: 500, subclasses: ['Meditation', 'Journaling'] },
+      'Socials': { xp: 0, max: 500, subclasses: ['Networking', 'Dating'] },
+      'Skills': { xp: 0, max: 500, subclasses: ['Rigging', 'Forklift'] },
+    };
+
+    let totalXP = 0;
+    let level = 1;
+
+    function calculateLevel(xp) {
+      let lvl = 1;
+      let cap = 100;
+      while (xp >= cap) {
+        lvl++;
+        xp -= cap;
+        cap += 100;
+      }
+      return { level: lvl, nextCap: cap };
+    }
+
+    function updateMainXP() {
+      document.getElementById('mainXP').textContent = totalXP;
+      const { level: newLevel, nextCap } = calculateLevel(totalXP);
+      level = newLevel;
+      document.getElementById('mainLevel').textContent = level;
+      document.getElementById('xpNext').textContent = nextCap;
+      document.getElementById('mainXPBar').style.width = (totalXP / nextCap * 100) + '%';
+    }
+
+    function updateSkillTree() {
+      const container = document.getElementById('skillTree');
+      container.innerHTML = '';
+      Object.entries(skillTree).forEach(([name, data]) => {
+        const node = document.createElement('div');
+        node.className = 'node';
+        node.innerHTML = `<strong>${name}</strong><br><small>${data.subclasses.join(', ')}</small>
+          <div class="progress-bar"><div class="progress" style="width:${data.xp / data.max * 100}%"></div></div>
+          <p>${data.xp} / ${data.max} XP</p>
+          <div class="controls">
+            <input type="number" min="-1000" max="1000" value="10" id="input-${name}">
+            <button onclick="addXP('${name}')">+ / - XP</button>
+          </div>`;
+        container.appendChild(node);
+      });
+    }
+
+    function addXP(category) {
+      const amount = parseInt(document.getElementById('input-' + category).value) || 0;
+      skillTree[category].xp += amount;
+      if (skillTree[category].xp < 0) skillTree[category].xp = 0;
+      if (skillTree[category].xp > skillTree[category].max) skillTree[category].xp = skillTree[category].max;
+      totalXP = Object.values(skillTree).reduce((sum, cat) => sum + cat.xp, 0);
+      updateSkillTree();
+      updateMainXP();
+      saveProgress();
+    }
+
+    function saveProgress() {
+      localStorage.setItem('lifeRPG_data', JSON.stringify(skillTree));
+    }
+
+    function loadProgress() {
+      const saved = JSON.parse(localStorage.getItem('lifeRPG_data'));
+      if (saved) {
+        for (const key in saved) {
+          if (skillTree[key]) {
+            skillTree[key].xp = saved[key].xp;
+          }
+        }
+      }
+    }
+
+    loadProgress();
+    updateSkillTree();
+    updateMainXP();
+  </script>
 </body>
 </html>
